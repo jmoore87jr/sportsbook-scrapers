@@ -1,11 +1,17 @@
 # /NFL/scrapers/draftkings.py 
-# pro-football-reference play-by-play scraper
+# DraftKings sportsbook scraper
 
 import requests 
 from bs4 import BeautifulSoup 
 import pandas as pd
+import logging
+import time 
 
-def scrape_gamelines():
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+
+def scrape_nfl_gamelines():
+    logger.info("Retrieving DraftKings Game Lines")
     # create soup
     r = requests.get("https://sportsbook.draftkings.com/leagues/football/3?category=game-lines&subcategory=game")
     src = r.content 
@@ -41,13 +47,25 @@ def scrape_gamelines():
                 'Moneyline': moneyline_nums})
 
     print(df_gamelines)
+
+    # store in SQLite table
+
     return df_gamelines
 
-def scrape_player_props():
+def scrape_nfl_player_props():
     pass 
 
+def scrape_nba_player_props():
+    pass
+
+def main():
+    while True:
+        scrape_nfl_gamelines()
+        logger.info("Waiting...")
+        time.sleep(30)
+
 if __name__ == "__main__":
-    scrape_gamelines() 
+    main()
 
 
 
