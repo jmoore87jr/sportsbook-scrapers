@@ -33,12 +33,12 @@ def scrape_gamelines():
     moneyline_nums = [ node.text for node in moneylines.findAll('span', {'class': 'sportsbook-odds american default-color'}) ]
 
     df_gamelines = pd.DataFrame( 
-                {'team': team_names,
-                'spread': spread_nums,
-                'spread price': spread_prices,
-                'total': total_nums,
-                'total price': total_prices,
-                'moneyline': moneyline_nums})
+                {'Team': team_names,
+                'Spread': spread_nums,
+                'Spread_Price': spread_prices,
+                'Total': total_nums,
+                'Total_Price': total_prices,
+                'Moneyline': moneyline_nums})
 
     print(df_gamelines)
     return df_gamelines
