@@ -3,12 +3,14 @@
 
 # TODO: time stamp .csv saves
 
-import requests 
 from bs4 import BeautifulSoup 
-import pandas as pd
 import logging
-import time 
 import os 
+import pandas as pd
+import requests 
+import time 
+
+wait_time = 30
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -96,7 +98,6 @@ def df_differences(df1, df2): # if numbers changed in last 30s, notify
 def main():
     previous_df = pd.DataFrame()
     while True:
-        wait_time = 30
         # scrape
         current_df = scrape_nfl_gamelines()
         # report differences
