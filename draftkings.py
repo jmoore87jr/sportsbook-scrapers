@@ -1,20 +1,23 @@
 # /NFL/scrapers/draftkings.py 
 # DraftKings sportsbook scraper
 
-# TODO: store in SQLite table
+# TODO: time stamp .csv saves
 
 import requests 
 from bs4 import BeautifulSoup 
 import pandas as pd
 import logging
 import time 
-import sqlite3
+import os 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
-def save_to_SQLite():
-    pass
+def save_to_csv(df, csv_name):
+    mode = 'a' if os.path.exists(csv_name) else 'w'
+    header = False if os.path.exists(csv_name) else True
+    df.to_csv(csv_name, mode=mode, header=header)
+
 
 def scrape_nfl_gamelines():
     logger.info("Retrieving DraftKings game lines...")
@@ -57,9 +60,9 @@ def scrape_nfl_gamelines():
                         'Total': total_nums,
                         'Total_Price': total_prices,
                         'Moneyline': moneyline})
-        except ValueError:
+        except ValueError: # happens if the game is posted but numbers are missing
             for i in range(0, len(team_names), 2):
-                errors.append(f"Numbers haven't been posted for {team_names[i]} vs. {team_names[i+1]}.")
+                errors.append(f"Lines haven't been posted for {team_names[i]} vs. {team_names[i+1]}.")
             continue
 
         dfs.append(df)
@@ -68,7 +71,7 @@ def scrape_nfl_gamelines():
     print(result)
 
     for error in errors:
-        print(error)
+        logger.info(error)
 
     return result
 
@@ -80,17 +83,14 @@ def scrape_nba_player_props():
 
 def df_differences(df1, df2): # if numbers changed in last 30s, notify
     if df1.equals(df2) == True:
-        logger.info("No changes.")
-        return None
+        return "No changes."
     else:
         logger.info("There have been changes...")
         try:
             diffs = df1.compare(df2)
-            print(diffs)
             return diffs
         except ValueError:
-            print("New games added, please wait.")
-            return None
+            return "New games added, please wait."
         
 
 def main():
@@ -100,8 +100,17 @@ def main():
         # scrape
         current_df = scrape_nfl_gamelines()
         # report differences
-        df_differences(previous_df, current_df)
+        diff = df_differences(previous_df, current_df)
+        logger.info(diff)
         previous_df = current_df
+        # add to .csv if changes have been made
+        if not os.path.exists('dk_lines.csv'):
+            save_to_csv(current_df, 'dk_lines.csv')
+            logger.info("dk_lines.csv created.")
+        if isinstance(diff, pd.DataFrame):
+            save_to_csv(current_df, 'dk_lines.csv')
+            save_to_csv(diff, 'changes.csv')
+            logger.info("Changes saved.")
         # sleep
         logger.info(f"Waiting {wait_time}s...")
         time.sleep(wait_time)
