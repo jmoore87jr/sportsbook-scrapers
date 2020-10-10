@@ -1,6 +1,8 @@
 # /NFL/scrapers/draftkings.py 
 # DraftKings sportsbook scraper
 
+# TODO: store in SQLite table
+
 import requests 
 from bs4 import BeautifulSoup 
 import pandas as pd
@@ -57,7 +59,7 @@ def scrape_nfl_gamelines():
                         'Moneyline': moneyline})
         except ValueError:
             for i in range(0, len(team_names), 2):
-                errors.append(f"Error: Bets haven't been posted for {team_names[i]} vs. {team_names[i+1]}")
+                errors.append(f"Bets haven't been posted for {team_names[i]} vs. {team_names[i+1]}")
             continue
 
         dfs.append(df)
@@ -68,8 +70,6 @@ def scrape_nfl_gamelines():
     for error in errors:
         print(error)
 
-    # TODO: store in SQLite table
-
     return result
 
 def scrape_nfl_player_props():
@@ -78,10 +78,24 @@ def scrape_nfl_player_props():
 def scrape_nba_player_props():
     pass
 
+def df_differences(df1, df2): # if numbers changed in last 30s, notify
+    return df1.compare(df2)
+
 def main():
+    previous_df = pd.DataFrame()
     while True:
         wait_time = 30
-        scrape_nfl_gamelines()
+        current_df = scrape_nfl_gamelines()
+        if previous_df.equals(current_df) == True:
+            logger.info("No changes.")
+        else:
+            logger.info("There have been changes...")
+            try:
+                diffs = df_differences(previous_df, current_df)
+                print(diffs)
+            except ValueError:
+                print(f"New games added, wait {wait_time}s...")
+        previous_df = current_df
         logger.info(f"Waiting {wait_time}s...")
         time.sleep(wait_time)
 
