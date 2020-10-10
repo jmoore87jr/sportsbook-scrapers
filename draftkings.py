@@ -59,7 +59,7 @@ def scrape_nfl_gamelines():
                         'Moneyline': moneyline})
         except ValueError:
             for i in range(0, len(team_names), 2):
-                errors.append(f"Numbers haven't been posted for {team_names[i]} vs. {team_names[i+1]}")
+                errors.append(f"Numbers haven't been posted for {team_names[i]} vs. {team_names[i+1]}.")
             continue
 
         dfs.append(df)
