@@ -2,16 +2,22 @@
 # DraftKings sportsbook scraper
 
 # TODO: time stamp .csv saves
+# TODO: tidy up change logs changes.csv
 
 from bs4 import BeautifulSoup 
 import logging
 import os 
 import pandas as pd
 import requests 
+from sqlalchemy import create_engine
+import sqlite3
 import time 
 
-wait_time = 30
+# global vars
+url = "https://sportsbook.draftkings.com/leagues/football/3?category=game-lines&subcategory=game"
+wait_time = 60
 
+# start logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
@@ -20,11 +26,32 @@ def save_to_csv(df, csv_name):
     header = False if os.path.exists(csv_name) else True
     df.to_csv(csv_name, mode=mode, header=header)
 
+def save_to_sqlite(df, db_name):
+    try:
+        # connect to database
+        db = sqlite3.connect(db_name)
+        cursor = db.cursor()
+        # create database
+        cursor.execute("CREATE TABLE IF NOT EXISTS " + db_name + " (URL varchar(255) PRIMARY KEY,Team varchar(255),Spread INTEGER,Spread_Price INTEGER,Total INTEGER,Total_Price INTEGER, Moneyline INTEGER, Time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        # create sqlalchemy engine
+        engine = create_engine('sqlite:///{}.db'.format(db_name))
+        # insert new data
+        df.to_sql(db_name, con=engine, if_exists='append', chunksize=1000)
+        #cursor.execute("INSERT INTO" + db_name + " (Team, Spread, Spread_Price, Total, Total_Price, Moneyline, Time) VALUES (?,?,?,?,?,?,?);", (df,))
+        db.commit()
+    
+    except IOError as e:
+        print(e)
 
-def scrape_nfl_gamelines():
+    finally:
+        # close connection
+        cursor.close()
+        db.close()
+
+def extract_gamelines():
     logger.info("Retrieving DraftKings game lines...")
     # create soup
-    r = requests.get("https://sportsbook.draftkings.com/leagues/football/3?category=game-lines&subcategory=game")
+    r = requests.get(url)
     src = r.content 
     soup = BeautifulSoup(src, 'lxml')
 
@@ -77,11 +104,8 @@ def scrape_nfl_gamelines():
 
     return result
 
-def scrape_nfl_player_props():
+def extract_player_props():
     pass 
-
-def scrape_nba_player_props():
-    pass
 
 def df_differences(df1, df2): # if numbers changed in last 30s, notify
     if df1.equals(df2) == True:
@@ -99,7 +123,7 @@ def main():
     previous_df = pd.DataFrame()
     while True:
         # scrape
-        current_df = scrape_nfl_gamelines()
+        current_df = extract_gamelines()
         # report differences
         diff = df_differences(previous_df, current_df)
         logger.info(diff)
@@ -107,9 +131,11 @@ def main():
         # add to .csv if changes have been made
         if not os.path.exists('dk_lines.csv'):
             save_to_csv(current_df, 'dk_lines.csv')
+            save_to_sqlite(current_df, 'dk_lines')
             logger.info("dk_lines.csv created.")
         if isinstance(diff, pd.DataFrame):
             save_to_csv(current_df, 'dk_lines.csv')
+            save_to_sqlite(current_df, 'dk_lines')
             save_to_csv(diff, 'changes.csv')
             logger.info("Changes saved.")
         # sleep
