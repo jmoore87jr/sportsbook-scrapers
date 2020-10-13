@@ -5,6 +5,7 @@
 # TODO: tidy up change logs changes.csv
 
 from bs4 import BeautifulSoup 
+import datetime 
 import logging
 import os 
 import pandas as pd
@@ -21,18 +22,16 @@ wait_time = 60
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
-def save_to_csv(df, csv_name):
-    mode = 'a' if os.path.exists(csv_name) else 'w'
-    header = False if os.path.exists(csv_name) else True
-    df.to_csv(csv_name, mode=mode, header=header)
-
 def save_to_sqlite(df, db_name):
+    # timestamp
+    current_time = [ datetime.datetime.now() for _ in range(len(df.Team)) ]
+    df['Time'] = current_time
     try:
         # connect to database
         db = sqlite3.connect(db_name)
         cursor = db.cursor()
         # create database
-        cursor.execute("CREATE TABLE IF NOT EXISTS " + db_name + " (URL varchar(255) PRIMARY KEY,Team varchar(255),Spread INTEGER,Spread_Price INTEGER,Total INTEGER,Total_Price INTEGER, Moneyline INTEGER, Time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        #cursor.execute("CREATE TABLE IF NOT EXISTS " + db_name + " (URL varchar(255) PRIMARY KEY,Team varchar(255),Spread INTEGER,Spread_Price INTEGER,Total INTEGER,Total_Price INTEGER, Moneyline INTEGER, Time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
         # create sqlalchemy engine
         engine = create_engine('sqlite:///{}.db'.format(db_name))
         # insert new data
@@ -88,7 +87,7 @@ def extract_gamelines():
                         'Spread_Price': spread_prices,
                         'Total': total_nums,
                         'Total_Price': total_prices,
-                        'Moneyline': moneyline})
+                        'Moneyline': moneyline,})
         except ValueError: # happens if the game is posted but numbers are missing
             for i in range(0, len(team_names), 2):
                 errors.append(f"Lines haven't been posted for {team_names[i]} vs. {team_names[i+1]}.")
@@ -129,14 +128,15 @@ def main():
         logger.info(diff)
         previous_df = current_df
         # add to .csv if changes have been made
-        if not os.path.exists('dk_lines.csv'):
-            save_to_csv(current_df, 'dk_lines.csv')
+        if not os.path.exists('dk_lines.db'):
             save_to_sqlite(current_df, 'dk_lines')
-            logger.info("dk_lines.csv created.")
+            logger.info("dk_lines database created.")
+        else:
+            save_to_sqlite(current_df, 'dk_lines')
+            logger.info("dk_lines saved; no changes.")
         if isinstance(diff, pd.DataFrame):
-            save_to_csv(current_df, 'dk_lines.csv')
             save_to_sqlite(current_df, 'dk_lines')
-            save_to_csv(diff, 'changes.csv')
+            save_to_sqlite(diff, 'changes')
             logger.info("Changes saved.")
         # sleep
         logger.info(f"Waiting {wait_time}s...")
