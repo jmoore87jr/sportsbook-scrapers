@@ -1,3 +1,5 @@
-dk_lines.csv
-changes.csv
+changes
+changes.db
+dk_lines
 dk_lines.db
+query.py
